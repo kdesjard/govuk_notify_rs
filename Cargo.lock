@@ -232,7 +232,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "govuk_notify_rs"
+name = "govuk_notify"
 version = "0.1.0"
 dependencies = [
  "chrono",

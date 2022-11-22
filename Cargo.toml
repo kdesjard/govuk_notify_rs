@@ -1,7 +1,13 @@
 [package]
-name = "govuk_notify_rs"
+name = "govuk_notify"
 version = "0.1.0"
 edition = "2021"
+authors = ["baarkerlounger <db@slothlife.xyz>"]
+description = """
+Use this (unofficial) client to send emails using the [GOV.UK Notify](https://www.notifications.service.gov.uk) API.
+"""
+license = "MIT"
+repository = "https://github.com/baarkerlounger/govuk_notify_rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
