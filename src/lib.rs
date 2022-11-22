@@ -8,7 +8,7 @@
 //! use govuk_notify::NotifyClient;
 //! use serde_json::{Map, Value};
 //!
-//! async fn send_notification() {
+//! async fn mailer() {
 //!     let api_key = String::from("my_test_key-26785a09-ab16-4eb0-8407-a37497a57506-3d844edf-8d35-48ac-975b-e847b4f122b0");
 //!     let notify_client = NotifyClient::new(api_key);
 //!     let mut personalisation = Map::new();
@@ -19,6 +19,15 @@
 //!     let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
 //!
 //!     notify_client.send_email(email_address, template_id, Some(personalisation)).await;
+//! }
+//!
+//! async fn texter() {
+//!     let api_key = String::from("my_test_key-26785a09-ab16-4eb0-8407-a37497a57506-3d844edf-8d35-48ac-975b-e847b4f122b0");
+//!     let notify_client = NotifyClient::new(api_key);
+//!     let phone_number = String::from("+447900900123");
+//!     let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
+//!
+//!     notify_client.send_sms(phone_number, template_id, None).await;
 //! }
 //! ```
 
@@ -95,6 +104,8 @@ impl NotifyClient {
             }
             _ => {}
         }
+        
+        println!("{:?}", body);
 
         self.client
             .post(BASE_URL.to_owned() + url)
@@ -117,16 +128,11 @@ mod tests {
     #[tokio::test]
     async fn send_email_with_personalisation() {
         let email_address = String::from("john.doe@example.com");
-        let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
+        let template_id = String::from("782fa66b-e092-4806-90d6-16782a791eb0");
         let mut personalisation = Map::new();
-        let mut personalisation_values = Map::new();
-        personalisation_values.insert(
-            "variables".to_string(),
-            Value::String("some value".to_string()),
-        );
         personalisation.insert(
-            "personalisation".to_string(),
-            Value::Object(personalisation_values),
+            "my_variable".to_string(),
+            Value::String("some value".to_string()),
         );
         let response = client()
             .send_email(email_address, template_id, Some(personalisation))
@@ -151,17 +157,24 @@ mod tests {
         let phone_number = String::from("+447900900123");
         let template_id = String::from("a4dcf0f1-2eb4-44e7-a8a1-145801e47afe");
         let mut personalisation = Map::new();
-        let mut personalisation_values = Map::new();
-        personalisation_values.insert(
-            "reference".to_string(),
-            Value::String("some value".to_string()),
-        );
         personalisation.insert(
-            "personalisation".to_string(),
-            Value::Object(personalisation_values),
+            "my_variable".to_string(),
+            Value::String("some value".to_string()),
         );
         let response = client()
             .send_sms(phone_number, template_id, Some(personalisation))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 201)
+    }
+    
+    
+    #[tokio::test]
+    async fn send_sms_without_personalisation() {
+        let phone_number = String::from("+447900900123");
+        let template_id = String::from("14306c9d-8cad-4eaf-aaa4-3dae1a1df7e2");
+        let response = client()
+            .send_sms(phone_number, template_id, None)
             .await
             .unwrap();
         assert_eq!(response.status(), 201)
