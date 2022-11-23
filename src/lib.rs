@@ -18,7 +18,7 @@
 //!     let email_address = String::from("john.doe@example.com");
 //!     let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
 //!
-//!     notify_client.send_email(email_address, template_id, Some(personalisation)).await;
+//!     notify_client.send_email(email_address, template_id, Some(personalisation), None).await;
 //! }
 //!
 //! async fn texter() {
@@ -27,7 +27,7 @@
 //!     let phone_number = String::from("+447900900123");
 //!     let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
 //!
-//!     notify_client.send_sms(phone_number, template_id, None).await;
+//!     notify_client.send_sms(phone_number, template_id, None, None, None).await;
 //! }
 //! ```
 
@@ -62,13 +62,20 @@ impl NotifyClient {
         email_address: String,
         template_id: String,
         personalisation: Option<Map<String, Value>>,
+        reference: Option<String>,
     ) -> Result<reqwest::Response, reqwest::Error> {
         let mut body = Map::new();
         body.insert("email_address".to_string(), Value::String(email_address));
         body.insert("template_id".to_string(), Value::String(template_id));
 
-        self.send_notification(NotificationType::EMAIL, body, personalisation)
-            .await
+        self.send_notification(
+            NotificationType::EMAIL,
+            body,
+            personalisation,
+            reference,
+            None,
+        )
+        .await
     }
 
     pub async fn send_sms(
@@ -76,13 +83,21 @@ impl NotifyClient {
         phone_number: String,
         template_id: String,
         personalisation: Option<Map<String, Value>>,
+        reference: Option<String>,
+        sms_sender_id: Option<String>,
     ) -> Result<reqwest::Response, reqwest::Error> {
         let mut body = Map::new();
         body.insert("phone_number".to_string(), Value::String(phone_number));
         body.insert("template_id".to_string(), Value::String(template_id));
 
-        self.send_notification(NotificationType::SMS, body, personalisation)
-            .await
+        self.send_notification(
+            NotificationType::SMS,
+            body,
+            personalisation,
+            reference,
+            sms_sender_id,
+        )
+        .await
     }
 
     async fn send_notification(
@@ -90,6 +105,8 @@ impl NotifyClient {
         notification_type: NotificationType,
         mut body: Map<String, Value>,
         personalisation: Option<Map<String, Value>>,
+        reference: Option<String>,
+        sms_sender_id: Option<String>,
     ) -> Result<reqwest::Response, reqwest::Error> {
         let url = match notification_type {
             NotificationType::EMAIL => "/v2/notifications/email",
@@ -98,14 +115,17 @@ impl NotifyClient {
         let token = auth::create_jwt(&self.api_key).unwrap();
         let auth_header: &str = &["Bearer ", token.as_str()].concat();
 
-        match personalisation {
-            Some(p) => {
-                body.insert("personalisation".to_string(), Value::Object(p));
-            }
-            _ => {}
+        if let Some(p) = personalisation {
+            body.insert("personalisation".to_string(), Value::Object(p));
         }
-        
-        println!("{:?}", body);
+
+        if let Some(r) = reference {
+            body.insert("reference".to_string(), Value::String(r));
+        }
+
+        if let Some(s_id) = sms_sender_id {
+            body.insert("sms_sender_id".to_string(), Value::String(s_id));
+        }
 
         self.client
             .post(BASE_URL.to_owned() + url)
@@ -135,7 +155,7 @@ mod tests {
             Value::String("some value".to_string()),
         );
         let response = client()
-            .send_email(email_address, template_id, Some(personalisation))
+            .send_email(email_address, template_id, Some(personalisation), None)
             .await
             .unwrap();
         assert_eq!(response.status(), 201)
@@ -145,13 +165,14 @@ mod tests {
     async fn send_email_without_personalisation() {
         let email_address = String::from("john.doe@example.com");
         let template_id = String::from("217a419e-6a7d-482a-9596-718b889dffce");
+        let reference = String::from("ref_unique_xyz");
         let response = client()
-            .send_email(email_address, template_id, None)
+            .send_email(email_address, template_id, None, Some(reference))
             .await
             .unwrap();
         assert_eq!(response.status(), 201)
     }
-    
+
     #[tokio::test]
     async fn send_sms_with_personalisation() {
         let phone_number = String::from("+447900900123");
@@ -162,19 +183,26 @@ mod tests {
             Value::String("some value".to_string()),
         );
         let response = client()
-            .send_sms(phone_number, template_id, Some(personalisation))
+            .send_sms(phone_number, template_id, Some(personalisation), None, None)
             .await
             .unwrap();
         assert_eq!(response.status(), 201)
     }
-    
-    
+
     #[tokio::test]
     async fn send_sms_without_personalisation() {
         let phone_number = String::from("+447900900123");
         let template_id = String::from("14306c9d-8cad-4eaf-aaa4-3dae1a1df7e2");
+        let sms_sender_id = String::from("b8f5bba5-5528-4bf6-b9a8-911a257f0cd4");
+        let reference = String::from("ref_unique_abc");
         let response = client()
-            .send_sms(phone_number, template_id, None)
+            .send_sms(
+                phone_number,
+                template_id,
+                None,
+                Some(reference),
+                Some(sms_sender_id),
+            )
             .await
             .unwrap();
         assert_eq!(response.status(), 201)
