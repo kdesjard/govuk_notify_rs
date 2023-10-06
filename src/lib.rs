@@ -37,9 +37,10 @@ use reqwest;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use serde_json::{Map, Value};
 
-static BASE_URL: &str = "https://api.notifications.service.gov.uk";
+static DEFAULT_BASE_URL: &str = "https://api.notifications.service.gov.uk";
 
 pub struct NotifyClient {
+    notify_server: String,
     api_key: String,
     client: reqwest::Client,
 }
@@ -50,8 +51,13 @@ enum NotificationType {
 }
 
 impl NotifyClient {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: String, notify_server: Option<String>) -> Self {
+        let notify_server = match notify_server {
+            Some(s) => s,
+            None    => DEFAULT_BASE_URL.to_string(),
+        };
         NotifyClient {
+            notify_server,
             api_key,
             client: reqwest::Client::new(),
         }
@@ -128,7 +134,7 @@ impl NotifyClient {
         }
 
         self.client
-            .post(BASE_URL.to_owned() + url)
+            .post(self.notify_server.clone() + url)
             .header(USER_AGENT, "rust-client-pre-alpha")
             .header(AUTHORIZATION, auth_header)
             .header(CONTENT_TYPE, "application/json")
